@@ -371,6 +371,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 // — WinMain —
 int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
+    // 单实例检测
+    HANDLE hMutex = CreateMutexA(nullptr, FALSE, "CPUMonitorOverlay_SingleInstance");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        if (hMutex) CloseHandle(hMutex);
+        return 0;
+    }
+
     SetProcessDPIAware();
 
     SYSTEM_INFO si;
@@ -380,7 +387,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
 
     g_NtQuery = (PNtQuerySystemInformation)GetProcAddress(
         GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation");
-    if (!g_NtQuery) return 1;
+    if (!g_NtQuery) { CloseHandle(hMutex); return 1; }
 
     UpdateUsage();
 
@@ -416,7 +423,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
         WS_POPUP,
         x, y, winW, winH,
         nullptr, nullptr, hInst, nullptr);
-    if (!hwnd) return 1;
+    if (!hwnd) { CloseHandle(hMutex); return 1; }
 
     SetLayeredWindowAttributes(hwnd, 0, 210, LWA_ALPHA);
     ShowWindow(hwnd, SW_SHOW);
@@ -427,5 +434,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
     }
+    CloseHandle(hMutex);
     return (int)msg.wParam;
 }
